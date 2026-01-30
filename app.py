@@ -110,10 +110,19 @@ def apply_strict_dark_theme(fig):
 # ===============================
 #DATA_FILE = r"C:\Users\sm2069\Desktop\Matson_Data-Analytics\shipping_schedule_enriched.csv"
 import os
-import pandas as pd
 
 DATA_FILE = os.path.join("data", "shipping_schedule_enriched.csv")
+
+if not os.path.exists(DATA_FILE):
+    st.error("Data file not found on server")
+    st.stop()
+
 df = pd.read_csv(DATA_FILE)
+
+if df.empty:
+    st.error("Data file loaded but contains no records")
+    st.stop()
+
 
 df.columns = df.columns.str.strip()
 
@@ -227,7 +236,8 @@ dep_counts.columns = ["date", "count"]
 
 fig = px.line(dep_counts, x="date", y="count", markers=True)
 fig = apply_strict_dark_theme(fig)
-st.plotly_chart(fig, use_container_width=True)
+st.plotly_chart(fig, width="stretch")
+
 # -------- Interpretation: Depart Date Distribution --------
 with st.container():
     counts = dep_counts["count"]
