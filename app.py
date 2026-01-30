@@ -108,9 +108,13 @@ def apply_strict_dark_theme(fig):
 # ===============================
 # LOAD DATA (BACKEND ONLY)
 # ===============================
-DATA_FILE = r"C:\Users\sm2069\Desktop\Matson_Data-Analytics\shipping_schedule_enriched.csv"
+#DATA_FILE = r"C:\Users\sm2069\Desktop\Matson_Data-Analytics\shipping_schedule_enriched.csv"
+import os
+import pandas as pd
 
+DATA_FILE = os.path.join("data", "shipping_schedule_enriched.csv")
 df = pd.read_csv(DATA_FILE)
+
 df.columns = df.columns.str.strip()
 
 # ===============================
