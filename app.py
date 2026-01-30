@@ -396,17 +396,17 @@ st.plotly_chart(fig_g, use_container_width=True)
 # ===============================
 # DATA PREVIEW
 # ===============================
-st.subheader("Data Preview")
-st.dataframe(df_f.head(200))
+#st.subheader("Data Preview")
+#st.dataframe(df_f.head(200))
 
 # ===============================
 # DOWNLOAD
 # ===============================
-st.download_button(
-    "Download Filtered CSV",
-    df_f.to_csv(index=False),
-    file_name="shipping_schedule_filtered.csv",
-    mime="text/csv"
-)
+#st.download_button(
+   # "Download Filtered CSV",
+   # df_f.to_csv(index=False),
+   # file_name="shipping_schedule_filtered.csv",
+   # mime="text/csv"
+#)
 
-st.success("Dashboard loaded successfully 🚢")
+#st.success("Dashboard loaded successfully 🚢")
