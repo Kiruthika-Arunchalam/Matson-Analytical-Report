@@ -207,6 +207,35 @@ if not dep.empty:
     fig_dep = px.line(dep, x="date", y="count", markers=True)
     fig_dep.update_layout(xaxis_title="Date", yaxis_title="Count")
     st.plotly_chart(apply_dark(fig_dep), use_container_width=True)
+    # ===============================
+# INTERPRETATION: DEPARTURE DISTRIBUTION
+# ===============================
+if not dep.empty:
+
+    mean_c = dep["count"].mean()
+    std_c = dep["count"].std()
+    peak = dep["count"].max()
+
+    if peak > mean_c + 3 * std_c:
+        st.warning(
+            "⚠️ **Departure Clustering Detected**\n\n"
+            "Certain dates show unusually high departures. "
+            "This may indicate batch schedule uploads, duplicated entries, "
+            "or peak-season deployment patterns."
+        )
+    elif std_c / mean_c > 0.75:
+        st.info(
+            "ℹ️ **High Operational Variability**\n\n"
+            "Departure frequency varies significantly across dates. "
+            "This may reflect seasonal routing or dynamic schedule adjustments."
+        )
+    else:
+        st.success(
+            "✅ **Stable Departure Pattern**\n\n"
+            "Departures are evenly distributed across time, "
+            "indicating consistent operational scheduling."
+        )
+
 
 # ===============================
 # TOP PORTS
@@ -246,6 +275,32 @@ with col2:
         hovertemplate="<b>Destination:</b> %{y}<br><b>Movements:</b> %{x}<extra></extra>"
     )
     st.plotly_chart(apply_dark(fig_d), use_container_width=True)
+    # ===============================
+# INTERPRETATION: PORT CONCENTRATION
+# ===============================
+if not top_o.empty and not top_d.empty:
+
+    total = len(df_f)
+    top_origin_share = top_o["count"].iloc[0] / total
+    top_dest_share = top_d["count"].iloc[0] / total
+
+    if top_origin_share > 0.6 or top_dest_share > 0.6:
+        st.warning(
+            "⚠️ **High Port Dependency Risk**\n\n"
+            "A single port dominates traffic. "
+            "Operational disruptions at this port may significantly impact the network."
+        )
+    elif top_origin_share > 0.35 or top_dest_share > 0.35:
+        st.info(
+            "ℹ️ **Moderate Hub Concentration**\n\n"
+            "Traffic is centered around key hub ports — typical in hub-and-spoke networks."
+        )
+    else:
+        st.success(
+            "✅ **Balanced Port Network**\n\n"
+            "Traffic is well distributed across multiple ports, reducing concentration risk."
+        )
+
 
 # ===============================
 # TRANSIT VS PORT CALL
@@ -280,6 +335,40 @@ if not sc.empty:
     )
 
     st.plotly_chart(apply_dark(fig_sc), use_container_width=True)
+    # ===============================
+# INTERPRETATION: TRANSIT BEHAVIOR
+# ===============================
+if not sc.empty:
+
+    corr = sc[["port_call_index", "transit_hours"]].corr().iloc[0, 1]
+    outlier_ratio = (
+        sc["transit_hours"] >
+        sc["transit_hours"].quantile(0.95)
+    ).mean()
+
+    if corr > 0.6:
+        st.warning(
+            "⚠️ **Cascading Delay Pattern**\n\n"
+            "Transit times increase as voyages progress. "
+            "This suggests delay accumulation across port calls."
+        )
+    elif corr < -0.5:
+        st.info(
+            "ℹ️ **Efficiency Gain Across Voyage**\n\n"
+            "Transit time reduces across later port calls, "
+            "indicating route optimization or shorter legs."
+        )
+    elif outlier_ratio > 0.1:
+        st.warning(
+            "⚠️ **Significant Transit Outliers Detected**\n\n"
+            "A notable percentage of voyages show unusually high transit hours."
+        )
+    else:
+        st.success(
+            "✅ **Stable Transit Performance**\n\n"
+            "Transit duration remains consistent across port sequences."
+        )
+
 
 # ===============================
 # GANTT TIMELINE
@@ -314,5 +403,42 @@ if vv_list:
         fig_g.update_layout(xaxis_title="Time", yaxis_title="Voyage")
 
         st.plotly_chart(apply_dark(fig_g), use_container_width=True)
+        # ===============================
+# INTERPRETATION: VOYAGE SCHEDULE
+# ===============================
+if not gantt_df.empty:
 
-st.success("Dashboard loaded successfully 🚢")
+    durations = (
+        gantt_df["arrive_dt"] -
+        gantt_df["final_depart"]
+    ).dt.total_seconds() / 3600
+
+    long_ratio = (durations > durations.quantile(0.95)).mean()
+
+    overlap_count = 0
+    for vv, group in gantt_df.groupby("vessvoy"):
+        group = group.sort_values("final_depart")
+        overlap_count += (
+            group["final_depart"].shift(-1) <
+            group["arrive_dt"]
+        ).sum()
+
+    if overlap_count > 0:
+        st.warning(
+            f"⚠️ **Schedule Overlaps Detected**\n\n"
+            f"{overlap_count} overlapping voyage windows found. "
+            "This may indicate data quality issues or unrealistic scheduling."
+        )
+    elif long_ratio > 0.15:
+        st.warning(
+            "⚠️ **Extended Voyage Durations Observed**\n\n"
+            "Some voyages are significantly longer than typical sailing windows."
+        )
+    else:
+        st.success(
+            "✅ **Voyage Scheduling Looks Consistent**\n\n"
+            "No major overlaps or abnormal durations detected."
+        )
+
+
+
