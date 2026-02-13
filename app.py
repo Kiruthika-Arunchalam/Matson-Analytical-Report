@@ -286,76 +286,52 @@ with st.container():
         )
 
 
-
 # ===============================
-# TOP ORIGIN & DESTINATION PORTS
+# SCATTER: TRANSIT VS PORT CALL
 # ===============================
-st.subheader("Top Origin & Destination Ports")
+st.subheader("Transit Hours vs Port Call Index")
 
-col1, col2 = st.columns(2)
+sc = df_f.dropna(subset=["transit_hours_final", "port_call_index"])
 
-# -------- ORIGIN PORTS --------
-with col1:
-    top_o = (
-        df_f["OriginPortCode"]
-        .value_counts()
-        .head(15)
-        .reset_index()
-    )
-    top_o.columns = ["OriginPortCode", "count"]
+if not sc.empty:
 
-    fig_o = px.bar(
-        top_o,
-        x="count",
-        y="OriginPortCode",
-        orientation="h",
-        title="Top Origin Ports"
-    )
-
-    fig_o.update_traces(
-        hovertemplate="<b>Origin Port:</b> %{y}<br><b>Movements:</b> %{x}<extra></extra>"
+    fig_sc = px.scatter(
+        sc,
+        x="port_call_index",
+        y="transit_hours_final",
+        color="OriginPortCode",
+        hover_data={
+            "OriginPortCode": True,
+            "DestPortCode": True,      # ✅ ADD THIS
+            "Vessel_Name": True,
+            "vessvoy": True,
+            "port_call_index": False,
+            "transit_hours_final": False
+        }
     )
 
-    fig_o.update_layout(
-        xaxis_title="Number of Movements",
-        yaxis_title="Origin Port"
+    fig_sc.update_traces(
+        hovertemplate=
+        "<b>Origin:</b> %{customdata[0]}<br>" +
+        "<b>Destination:</b> %{customdata[1]}<br>" +
+        "<b>Vessel:</b> %{customdata[2]}<br>" +
+        "<b>Voyage:</b> %{customdata[3]}<br>" +
+        "<b>Transit Hours:</b> %{y}<br>" +
+        "<b>Port Call Index:</b> %{x}<extra></extra>"
     )
 
-    fig_o = apply_strict_dark_theme(fig_o)
-
-    st.plotly_chart(fig_o, use_container_width=True)
-
-
-# -------- DESTINATION PORTS --------
-with col2:
-    top_d = (
-        df_f["DestPortCode"]
-        .value_counts()
-        .head(15)
-        .reset_index()
-    )
-    top_d.columns = ["DestPortCode", "count"]
-
-    fig_d = px.bar(
-        top_d,
-        x="count",
-        y="DestPortCode",
-        orientation="h",
-        title="Top Destination Ports"
+    fig_sc.update_layout(
+        title="Transit Hours vs Port Call Sequence",
+        xaxis_title="Port Call Index",
+        yaxis_title="Transit Hours"
     )
 
-    fig_d.update_traces(
-        hovertemplate="<b>Destination Port:</b> %{y}<br><b>Movements:</b> %{x}<extra></extra>"
-    )
+    fig_sc = apply_strict_dark_theme(fig_sc)
 
-    fig_d.update_layout(
-        xaxis_title="Number of Movements",
-        yaxis_title="Destination Port"
-    )
+    st.plotly_chart(fig_sc, use_container_width=True)
 
-    fig_d = apply_strict_dark_theme(fig_d)
-
-    st.plotly_chart(fig_d, use_container_width=True)
+else:
+    st.warning("No data available for scatter chart.")
 
     # -------- Interpretation: Port Concentration --------
 with st.container():
