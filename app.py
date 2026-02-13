@@ -61,7 +61,7 @@ st.markdown(
 
     /* Main headers */
     h1 {
-        color: #4f000b !important;
+        color: #669bbc!important;
         font-weight: 800 !important;
     }
 
