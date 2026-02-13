@@ -362,19 +362,28 @@ st.subheader("Transit Hours vs Port Call Index")
 
 sc = df_f.dropna(subset=["transit_hours_final", "port_call_index"])
 
-fig_sc = px.scatter(
-    sc,
-    x="port_call_index",
-    y="transit_hours_final",
-    color="OriginPortCode",
-    hover_data=["Vessel_Name", "DestPortCode"]
-)
-fig_sc.update_layout(
-     xaxis_title="Port Call Sequence",
-    yaxis_title="Transit Hours"
-)
-fig_sc = apply_strict_dark_theme(fig_sc)
-st.plotly_chart(fig_sc, use_container_width=True)
+if not sc.empty:
+
+    fig_sc = px.scatter(
+        sc,
+        x="port_call_index",
+        y="transit_hours_final",
+        color="OriginPortCode"
+    )
+
+    fig_sc.update_layout(
+        title="Transit Hours vs Port Call Sequence",
+        xaxis_title="Port Call Index",
+        yaxis_title="Transit Hours"
+    )
+
+    fig_sc = apply_strict_dark_theme(fig_sc)
+
+    st.plotly_chart(fig_sc, use_container_width=True)
+
+else:
+    st.warning("No data available for scatter chart.")
+
 # -------- Interpretation: Transit vs Port Call Index --------
 with st.container():
     corr = sc[["port_call_index", "transit_hours_final"]].corr().iloc[0, 1]
@@ -410,29 +419,45 @@ with st.container():
 # ===============================
 st.subheader("Voyage Timeline (Gantt)")
 
-vv_select = st.multiselect(
-    "Select voyages (max 10)",
-    sorted(df_f["vessvoy"].unique()),
-    default=sorted(df_f["vessvoy"].unique())[:5]
-)
+vv_list = sorted(df_f["vessvoy"].dropna().unique())
 
-gantt_df = df_f[df_f["vessvoy"].isin(vv_select)]
+if vv_list:
 
-fig_g = px.timeline(
-    gantt_df,
-    x_start="final_depart",
-    x_end="arrive_dt",
-    y="vessvoy",
-    color="OriginPortCode"
-)
-fig_g.update_layout(
-    xaxis_title="Time",
-    yaxis_title="Voyage"
-)
+    vv_select = st.multiselect(
+        "Select voyages (max 10)",
+        vv_list,
+        default=vv_list[:5]
+    )
 
-fig_g.update_yaxes(autorange="reversed")
-fig_g = apply_strict_dark_theme(fig_g)
-st.plotly_chart(fig_g, use_container_width=True)
+    gantt_df = df_f[df_f["vessvoy"].isin(vv_select)]
+
+    if not gantt_df.empty:
+
+        fig_g = px.timeline(
+            gantt_df,
+            x_start="final_depart",
+            x_end="arrive_dt",
+            y="vessvoy",
+            color="OriginPortCode"
+        )
+
+        fig_g.update_layout(
+            title="Voyage Timeline",
+            xaxis_title="Time",
+            yaxis_title="Voyage"
+        )
+
+        fig_g.update_yaxes(autorange="reversed")
+
+        fig_g = apply_strict_dark_theme(fig_g)
+
+        st.plotly_chart(fig_g, use_container_width=True)
+
+    else:
+        st.warning("No timeline data available.")
+
+else:
+    st.warning("No voyage data found.")
 
 # ===============================
 # DATA PREVIEW
