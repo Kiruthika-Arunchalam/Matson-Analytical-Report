@@ -309,27 +309,46 @@ with col1:
     orientation="h",
     title="Top Origin Ports",
     hover_data={
-        "OriginPortCode": True,
-        "count": True
-    }
-)
+# ===============================
+# TOP ORIGIN & DESTINATION PORTS
+# ===============================
+st.subheader("Top Origin & Destination Ports")
 
-fig_o.update_traces(
-    hovertemplate="<b>Origin Port:</b> %{y}<br><b>Movements:</b> %{x}<extra></extra>"
-)
+col1, col2 = st.columns(2)
 
-    )
-    fig_o = apply_strict_dark_theme(fig_o)
-    st.plotly_chart(fig_o, use_container_width=True)
-
-with col2:
-    top_d = (
-        df_f["DestPortCode"]
+# -------- ORIGIN PORTS --------
+with col1:
+    top_o = (
+        df_f["OriginPortCode"]
         .value_counts()
         .head(15)
         .reset_index()
     )
-    top_d.columns = ["DestPortCode", "count"]
+    top_o.columns = ["OriginPortCode", "count"]
+
+    fig_o = px.bar(
+        top_o,
+        x="count",
+        y="OriginPortCode",
+        orientation="h",
+        title="Top Origin Ports"
+    )
+
+    fig_o.update_traces(
+        hovertemplate="<b>Origin Port:</b> %{y}<br><b>Movements:</b> %{x}<extra></extra>"
+    )
+
+    fig_o.update_layout(
+        xaxis_title="Number of Movements",
+        yaxis_title="Origin Port"
+    )
+
+    fig_o = apply_strict_dark_theme(fig_o)
+
+    st.plotly_chart(fig_o, use_container_width=True)
+
+
+# -------- DESTINATION PORTS --------
 with col2:
     top_d = (
         df_f["DestPortCode"]
@@ -344,15 +363,16 @@ with col2:
         x="count",
         y="DestPortCode",
         orientation="h",
-        title="Top Destination Ports",
-        hover_data={
-            "DestPortCode": True,
-            "count": True
-        }
+        title="Top Destination Ports"
     )
 
     fig_d.update_traces(
         hovertemplate="<b>Destination Port:</b> %{y}<br><b>Movements:</b> %{x}<extra></extra>"
+    )
+
+    fig_d.update_layout(
+        xaxis_title="Number of Movements",
+        yaxis_title="Destination Port"
     )
 
     fig_d = apply_strict_dark_theme(fig_d)
