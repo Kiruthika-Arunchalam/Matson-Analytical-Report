@@ -218,7 +218,6 @@ k3.metric("Unique Vessel Name", f"{df_f['Vessel_Name'].nunique():,}")
 
 avg_transit = df_f["transit_hours_final"].mean()
 k4.metric("Avg Transit (hrs)", f"{avg_transit:.1f}" if not np.isnan(avg_transit) else "N/A")
-
 # ===============================
 # DEPART DATE DISTRIBUTION
 # ===============================
@@ -232,11 +231,28 @@ dep_counts = (
     .sort_index()
     .reset_index()
 )
+
 dep_counts.columns = ["date", "count"]
 
-fig = px.line(dep_counts, x="date", y="count", markers=True)
-fig = apply_strict_dark_theme(fig)
-st.plotly_chart(fig, width="stretch")
+if not dep_counts.empty:
+
+    fig = px.line(
+        dep_counts,
+        x="date",
+        y="count",
+        markers=True,
+        title="Departure Count by Date"   # ✅ IMPORTANT FIX
+    )
+
+    fig.update_layout(
+        xaxis_title="Departure Date",
+        yaxis_title="Number of Departures"
+    )
+
+    fig = apply_strict_dark_theme(fig)
+
+    st.plotly_chart(fig, use_container_width=True)
+
 
 # -------- Interpretation: Depart Date Distribution --------
 with st.container():
