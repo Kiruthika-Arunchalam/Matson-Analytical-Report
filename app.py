@@ -83,27 +83,33 @@ st.markdown(
 # PLOTLY STRICT DARK THEME
 # ===============================
 def apply_strict_dark_theme(fig):
+
     fig.update_layout(
         template="plotly_dark",
         paper_bgcolor="#000000",
         plot_bgcolor="#000000",
         font=dict(color="white", size=14),
         title=dict(font=dict(color="white", size=18)),
-        legend=dict(font=dict(color="white")),
+
+        # 🔥 THIS FIXES UNDEFINED
+        xaxis_title="",
+        yaxis_title=""
     )
 
     fig.update_xaxes(
-        title_font=dict(color="white", size=14),
-        tickfont=dict(color="white", size=12),
+        title_text="",        # 🔥 IMPORTANT
+        tickfont=dict(color="white"),
         gridcolor="rgba(255,255,255,0.15)"
     )
 
     fig.update_yaxes(
-        title_font=dict(color="white", size=14),
-        tickfont=dict(color="white", size=12),
+        title_text="",        # 🔥 IMPORTANT
+        tickfont=dict(color="white"),
         gridcolor="rgba(255,255,255,0.15)"
     )
+
     return fig
+
 
 # ===============================
 # LOAD DATA (BACKEND ONLY)
