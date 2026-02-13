@@ -52,32 +52,21 @@ h2, h3 { color: #d4a373 !important; }
 </style>
 """, unsafe_allow_html=True)
 
+def apply_dark(fig):
 # ===============================
 # DARK THEME FUNCTION
-# ===============================
-# ===============================
-# DARK THEME FUNCTION
-# ===============================
-def apply_strict_dark_theme(fig):
+
 
     fig.update_layout(
         template="plotly_dark",
         paper_bgcolor="#000000",
         plot_bgcolor="#000000",
-        font=dict(color="white", size=14),
-        title=dict(font=dict(color="white", size=18)),
+        font=dict(color="white"),
         legend=dict(font=dict(color="white"))
     )
+    fig.update_xaxes(gridcolor="rgba(255,255,255,0.15)")
+    fig.update_yaxes(gridcolor="rgba(255,255,255,0.15)")
 
-    fig.update_xaxes(
-        tickfont=dict(color="white"),
-        gridcolor="rgba(255,255,255,0.15)"
-    )
-
-    fig.update_yaxes(
-        tickfont=dict(color="white"),
-        gridcolor="rgba(255,255,255,0.15)"
-    )
 
     return fig
 
