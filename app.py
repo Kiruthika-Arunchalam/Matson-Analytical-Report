@@ -404,7 +404,7 @@ if vv_list:
         )
 
         fig_g.update_yaxes(autorange="reversed")
-        dark_plot
+        fig = dark_plot(fig)
 
         st.plotly_chart(fig_g, use_container_width=True)
 
