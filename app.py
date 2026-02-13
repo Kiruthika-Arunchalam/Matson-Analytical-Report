@@ -71,7 +71,7 @@ st.markdown(
     }
 
     h3 {
-        color: #720026 !important;
+        color: #d4a373 !important;
         font-weight: 700 !important;
     }
     </style>
