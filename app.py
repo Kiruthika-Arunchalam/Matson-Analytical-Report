@@ -408,12 +408,11 @@ if vv_list:
         )
 
         fig_g.update_yaxes(autorange="reversed")
-        fig = apply_strict_dark_theme(fig)
+
+        fig_g = apply_dark(fig_g)   # ✅ correct function + correct variable
 
         st.plotly_chart(fig_g, use_container_width=True)
 
-    else:
-        st.warning("No valid timeline data available.")
       # ===============================
 # INTERPRETATION: VOYAGE SCHEDULE
 # ===============================
