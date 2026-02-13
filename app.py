@@ -66,7 +66,7 @@ st.markdown(
     }
 
     h2 {
-        color: #4f000b !important;
+        color: #d4a373 !important;
         font-weight: 700 !important;
     }
 
