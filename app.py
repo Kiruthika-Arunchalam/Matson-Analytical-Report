@@ -369,6 +369,10 @@ fig_sc = px.scatter(
     color="OriginPortCode",
     hover_data=["Vessel_Name", "DestPortCode"]
 )
+fig_sc.update_layout(
+     xaxis_title="Port Call Sequence",
+    yaxis_title="Transit Hours"
+)
 fig_sc = apply_strict_dark_theme(fig_sc)
 st.plotly_chart(fig_sc, use_container_width=True)
 # -------- Interpretation: Transit vs Port Call Index --------
@@ -421,6 +425,11 @@ fig_g = px.timeline(
     y="vessvoy",
     color="OriginPortCode"
 )
+fig_g.update_layout(
+    xaxis_title="Time",
+    yaxis_title="Voyage"
+)
+
 fig_g.update_yaxes(autorange="reversed")
 fig_g = apply_strict_dark_theme(fig_g)
 st.plotly_chart(fig_g, use_container_width=True)
