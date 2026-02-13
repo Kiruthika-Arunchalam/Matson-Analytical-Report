@@ -286,29 +286,7 @@ with st.container():
         )
 
 
-# ===============================
-# TOP ORIGIN PORTS
-# ===============================
-st.subheader("Top Origin & Destination Ports")
 
-col1, col2 = st.columns(2)
-
-with col1:
-    top_o = (
-        df_f["OriginPortCode"]
-        .value_counts()
-        .head(15)
-        .reset_index()
-    )
-    top_o.columns = ["OriginPortCode", "count"]
-
-    fig_o = px.bar(
-    top_o,
-    x="count",
-    y="OriginPortCode",
-    orientation="h",
-    title="Top Origin Ports",
-    hover_data={
 # ===============================
 # TOP ORIGIN & DESTINATION PORTS
 # ===============================
