@@ -373,37 +373,44 @@ if not sc.empty:
 # ===============================
 # GANTT TIMELINE
 # ===============================
-st.subheader("Voyage Timeline")
+st.subheader("Voyage Timeline (Gantt)")
 
 vv_list = sorted(df_f["vessvoy"].dropna().unique())
 
 if vv_list:
-    selected = st.multiselect("Select Voyages", vv_list, default=vv_list[:3])
-    gantt_df = df_f[df_f["vessvoy"].isin(selected)]
+
+    vv_select = st.multiselect(
+        "Select voyages (max 10)",
+        vv_list,
+        default=vv_list[:5]
+    )
+
+    gantt_df = df_f[
+        df_f["vessvoy"].isin(vv_select) &
+        df_f["OriginPortCode"].notna() &
+        df_f["final_depart"].notna() &
+        df_f["arrive_dt"].notna()
+    ]
 
     if not gantt_df.empty:
+
         fig_g = px.timeline(
             gantt_df,
             x_start="final_depart",
             x_end="arrive_dt",
             y="vessvoy",
             color="OriginPortCode",
-            custom_data=["DestPortCode"]
-        )
-
-        fig_g.update_traces(
-            hovertemplate=
-            "<b>Voyage:</b> %{y}<br>" +
-            "<b>Origin:</b> %{marker.color}<br>" +
-            "<b>Destination:</b> %{customdata[0]}<br>" +
-            "<b>Start:</b> %{x}<extra></extra>"
+            hover_data=["DestPortCode", "Vessel_Name"]
         )
 
         fig_g.update_yaxes(autorange="reversed")
-        fig_g.update_layout(xaxis_title="Time", yaxis_title="Voyage")
+        fig_g = apply_strict_dark_theme(fig_g)
 
-        st.plotly_chart(apply_dark(fig_g), use_container_width=True)
-        # ===============================
+        st.plotly_chart(fig_g, use_container_width=True)
+
+    else:
+        st.warning("No valid timeline data available.")
+      # ===============================
 # INTERPRETATION: VOYAGE SCHEDULE
 # ===============================
 if not gantt_df.empty:
