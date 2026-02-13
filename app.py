@@ -330,25 +330,35 @@ with col2:
         .reset_index()
     )
     top_d.columns = ["DestPortCode", "count"]
+with col2:
+    top_d = (
+        df_f["DestPortCode"]
+        .value_counts()
+        .head(15)
+        .reset_index()
+    )
+    top_d.columns = ["DestPortCode", "count"]
 
-    fig_o = px.bar(
-    top_o,
-    x="count",
-    y="OriginPortCode",
-    orientation="h",
-    title="Top Origin Ports",
-    hover_data={
-        "OriginPortCode": True,
-        "count": True
-    }
-)
+    fig_d = px.bar(
+        top_d,
+        x="count",
+        y="DestPortCode",
+        orientation="h",
+        title="Top Destination Ports",
+        hover_data={
+            "DestPortCode": True,
+            "count": True
+        }
+    )
 
-fig_o.update_traces(
-    hovertemplate="<b>Origin Port:</b> %{y}<br><b>Movements:</b> %{x}<extra></extra>"
-)
+    fig_d.update_traces(
+        hovertemplate="<b>Destination Port:</b> %{y}<br><b>Movements:</b> %{x}<extra></extra>"
+    )
 
     fig_d = apply_strict_dark_theme(fig_d)
+
     st.plotly_chart(fig_d, use_container_width=True)
+
     # -------- Interpretation: Port Concentration --------
 with st.container():
     total_rows = len(df_f)
