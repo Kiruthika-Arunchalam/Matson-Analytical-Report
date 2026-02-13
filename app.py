@@ -3,6 +3,7 @@ import streamlit as st
 import pandas as pd
 import numpy as np
 import plotly.express as px
+import os
 
 # ===============================
 # PAGE CONFIG
@@ -13,129 +14,81 @@ st.set_page_config(
 )
 
 # ===============================
-# GLOBAL DARK CSS (METRICS + HEADERS)
+# GLOBAL DARK CSS
 # ===============================
-st.markdown(
-    """
-    <style>
-    .stApp {
-        background-color: #0b0b0b;
-        color: #ffffff;
-    }
+st.markdown("""
+<style>
+.stApp { background-color: #0b0b0b; color: #ffffff; }
 
-    section[data-testid="stSidebar"] {
-        background-color: #0b0b0b;
-    }
+section[data-testid="stSidebar"] {
+    background-color: #0b0b0b;
+}
 
-    /* Sidebar labels */
-    section[data-testid="stSidebar"] label {
-        color: #8ecae6 !important;
-        font-weight: 600;
-    }
+section[data-testid="stSidebar"] label {
+    color: #8ecae6 !important;
+    font-weight: 600;
+}
 
-    /* Sidebar headers */
-    section[data-testid="stSidebar"] h1,
-    section[data-testid="stSidebar"] h2,
-    section[data-testid="stSidebar"] h3 {
-        color: #8ecae6 !important;
-        font-weight: 700;
-    }
+div[data-testid="metric-container"] {
+    background-color: #000000;
+    border-radius: 8px;
+    padding: 14px;
+}
 
-    /* Metric cards */
-    div[data-testid="metric-container"] {
-        background-color: #000000;
-        border-radius: 8px;
-        padding: 14px;
-    }
+div[data-testid="metric-container"] label {
+    color: #8ecae6 !important;
+    font-weight: 700;
+}
 
-    div[data-testid="metric-container"] label {
-        color: #8ecae6 !important;
-        font-weight: 700;
-    }
+div[data-testid="metric-container"] div {
+    color: #00b4d8 !important;
+    font-weight: 800 !important;
+    font-size: 26px !important;
+}
 
-    div[data-testid="metric-container"] div {
-        color: #00b4d8 !important;
-        font-weight: 800 !important;
-        font-size: 26px !important;
-    }
+h1 { color: #669bbc!important; }
+h2, h3 { color: #d4a373 !important; }
 
-    /* Main headers */
-    h1 {
-        color: #669bbc!important;
-        font-weight: 800 !important;
-    }
-
-    h2 {
-        color: #d4a373 !important;
-        font-weight: 700 !important;
-    }
-
-    h3 {
-        color: #d4a373 !important;
-        font-weight: 700 !important;
-    }
-    </style>
-    """,
-    unsafe_allow_html=True
-)
+</style>
+""", unsafe_allow_html=True)
 
 # ===============================
-# PLOTLY STRICT DARK THEME
+# DARK THEME FUNCTION
 # ===============================
-def apply_strict_dark_theme(fig):
-
+def apply_dark(fig):
     fig.update_layout(
         template="plotly_dark",
         paper_bgcolor="#000000",
         plot_bgcolor="#000000",
-        font=dict(color="white", size=14),
-        title=dict(font=dict(color="white", size=18)),
-
-        # 🔥 THIS FIXES UNDEFINED
-        xaxis_title="",
-        yaxis_title=""
+        font=dict(color="white"),
+        legend=dict(font=dict(color="white"))
     )
-
-    fig.update_xaxes(
-        title_text="",        # 🔥 IMPORTANT
-        tickfont=dict(color="white"),
-        gridcolor="rgba(255,255,255,0.15)"
-    )
-
-    fig.update_yaxes(
-        title_text="",        # 🔥 IMPORTANT
-        tickfont=dict(color="white"),
-        gridcolor="rgba(255,255,255,0.15)"
-    )
-
+    fig.update_xaxes(gridcolor="rgba(255,255,255,0.15)")
+    fig.update_yaxes(gridcolor="rgba(255,255,255,0.15)")
     return fig
 
 
 # ===============================
-# LOAD DATA (BACKEND ONLY)
+# LOAD DATA
 # ===============================
-#DATA_FILE = r"C:\Users\sm2069\Desktop\Matson_Data-Analytics\shipping_schedule_enriched.csv"
-import os
-
 DATA_FILE = os.path.join("data", "shipping_schedule_enriched.csv")
 
 if not os.path.exists(DATA_FILE):
-    st.error("Data file not found on server")
+    st.error("Data file not found in /data folder")
     st.stop()
 
 df = pd.read_csv(DATA_FILE)
-
-if df.empty:
-    st.error("Data file loaded but contains no records")
-    st.stop()
-
-
 df.columns = df.columns.str.strip()
 
+if df.empty:
+    st.error("Data file is empty")
+    st.stop()
+
 # ===============================
-# DATE PARSING
+# DATE PARSING (SAFE)
 # ===============================
-df["arrive_dt"] = pd.to_datetime(df["arrive_dt"], errors="coerce")
+df["arrive_dt"] = pd.to_datetime(df.get("arrive_dt"), errors="coerce")
+
 df["final_depart"] = pd.to_datetime(
     df.get("final_imputed_depart_dt", df.get("depart_dt")),
     errors="coerce"
@@ -145,13 +98,15 @@ df["final_depart"] = pd.to_datetime(
 # DERIVED FIELDS
 # ===============================
 df["vessvoy"] = (
-    df["Vessel_Name"].astype(str) + "*" +
-    df["Voyage"].astype(str) + "*" +
-    df["Bound"].astype(str)
+    df.get("Vessel_Name", "").astype(str) + "*" +
+    df.get("Voyage", "").astype(str) + "*" +
+    df.get("Bound", "").astype(str)
 )
 
+df = df.sort_values(["vessvoy", "final_depart"])
 df["port_call_index"] = df.groupby("vessvoy").cumcount() + 1
-df["transit_hours_final"] = (
+
+df["transit_hours"] = (
     df["arrive_dt"] - df["final_depart"]
 ).dt.total_seconds() / 3600
 
@@ -160,27 +115,33 @@ df["transit_hours_final"] = (
 # ===============================
 st.sidebar.header("Filters")
 
-date_range = st.sidebar.date_input(
-    "Arrival date range",
-    [df["arrive_dt"].min().date(), df["arrive_dt"].max().date()]
-)
+if df["arrive_dt"].notna().any():
+    date_range = st.sidebar.date_input(
+        "Arrival date range",
+        [
+            df["arrive_dt"].min().date(),
+            df["arrive_dt"].max().date()
+        ]
+    )
+else:
+    date_range = None
 
 vessels = st.sidebar.multiselect(
-    "Vessel Name",
+    "Vessel",
     sorted(df["Vessel_Name"].dropna().unique())
 )
 
-voyage_filter = st.sidebar.multiselect(
-    "Voyage (vessvoy)",
+voyages = st.sidebar.multiselect(
+    "Voyage",
     sorted(df["vessvoy"].dropna().unique())
 )
 
-origin_filter = st.sidebar.multiselect(
+origins = st.sidebar.multiselect(
     "Origin Port",
     sorted(df["OriginPortCode"].dropna().unique())
 )
 
-dest_filter = st.sidebar.multiselect(
+dests = st.sidebar.multiselect(
     "Destination Port",
     sorted(df["DestPortCode"].dropna().unique())
 )
@@ -190,46 +151,48 @@ dest_filter = st.sidebar.multiselect(
 # ===============================
 df_f = df.copy()
 
-df_f = df_f[
-    (df_f["arrive_dt"] >= pd.to_datetime(date_range[0])) &
-    (df_f["arrive_dt"] <= pd.to_datetime(date_range[1]) + pd.Timedelta(days=1))
-]
+if date_range:
+    df_f = df_f[
+        (df_f["arrive_dt"] >= pd.to_datetime(date_range[0])) &
+        (df_f["arrive_dt"] <= pd.to_datetime(date_range[1]) + pd.Timedelta(days=1))
+    ]
 
 if vessels:
     df_f = df_f[df_f["Vessel_Name"].isin(vessels)]
 
-if voyage_filter:
-    df_f = df_f[df_f["vessvoy"].isin(voyage_filter)]
+if voyages:
+    df_f = df_f[df_f["vessvoy"].isin(voyages)]
 
-if origin_filter:
-    df_f = df_f[df_f["OriginPortCode"].isin(origin_filter)]
+if origins:
+    df_f = df_f[df_f["OriginPortCode"].isin(origins)]
 
-if dest_filter:
-    df_f = df_f[df_f["DestPortCode"].isin(dest_filter)]
+if dests:
+    df_f = df_f[df_f["DestPortCode"].isin(dests)]
 
 # ===============================
 # TITLE
 # ===============================
 st.title("Matson Schedule Data Analysis Report")
+st.header("Overview")
 
 # ===============================
 # KPIs
 # ===============================
-st.header("Overview & Charts")
-k1, k2, k3, k4 = st.columns(4)
+c1, c2, c3, c4 = st.columns(4)
 
-k1.metric("Rows Count", f"{len(df_f):,}")
-k2.metric("Unique Voyages", f"{df_f['vessvoy'].nunique():,}")
-k3.metric("Unique Vessel Name", f"{df_f['Vessel_Name'].nunique():,}")
+c1.metric("Rows", len(df_f))
+c2.metric("Voyages", df_f["vessvoy"].nunique())
+c3.metric("Vessels", df_f["Vessel_Name"].nunique())
 
-avg_transit = df_f["transit_hours_final"].mean()
-k4.metric("Avg Transit (hrs)", f"{avg_transit:.1f}" if not np.isnan(avg_transit) else "N/A")
+avg_transit = df_f["transit_hours"].mean()
+c4.metric("Avg Transit (hrs)", f"{avg_transit:.1f}" if not np.isnan(avg_transit) else "N/A")
+
 # ===============================
-# DEPART DATE DISTRIBUTION
+# DEPARTURE DISTRIBUTION
 # ===============================
-st.subheader("Depart Date Distribution")
+st.subheader("Departure Count by Date")
 
-dep_counts = (
+dep = (
     df_f["final_depart"]
     .dropna()
     .dt.date
@@ -238,76 +201,67 @@ dep_counts = (
     .reset_index()
 )
 
-dep_counts.columns = ["date", "count"]
+if not dep.empty:
+    dep.columns = ["date", "count"]
 
-if not dep_counts.empty:
-
-    fig = px.line(
-        dep_counts,
-        x="date",
-        y="count",
-        markers=True,
-        title="Departure Count by Date"   # ✅ IMPORTANT FIX
-    )
-
-    fig.update_layout(
-        xaxis_title="Departure Date",
-        yaxis_title="Number of Departures"
-    )
-
-    fig = apply_strict_dark_theme(fig)
-
-    st.plotly_chart(fig, use_container_width=True)
-
-
-# -------- Interpretation: Depart Date Distribution --------
-with st.container():
-    counts = dep_counts["count"]
-    mean_c = counts.mean()
-    std_c = counts.std()
-    max_c = counts.max()
-
-    if max_c > mean_c + 3 * std_c:
-        st.warning(
-            "⚠️ **Anomalous departure pattern detected**. "
-            "Certain departure dates occur far more frequently than others. "
-            "This often indicates reused or default departure dates in the schedule data."
-        )
-    elif std_c / mean_c > 0.7:
-        st.info(
-            "ℹ️ **High variability observed**. "
-            "Departure activity fluctuates significantly across dates, "
-            "which may reflect seasonal planning or uneven service deployment."
-        )
-    else:
-        st.success(
-            "✅ **Normal distribution**. "
-            "Departures are well spread over time with no abnormal clustering."
-        )
-
+    fig_dep = px.line(dep, x="date", y="count", markers=True)
+    fig_dep.update_layout(xaxis_title="Date", yaxis_title="Count")
+    st.plotly_chart(apply_dark(fig_dep), use_container_width=True)
 
 # ===============================
-# SCATTER: TRANSIT VS PORT CALL
+# TOP PORTS
+# ===============================
+st.subheader("Top Origin & Destination Ports")
+
+top_o = df_f["OriginPortCode"].value_counts().head(15).reset_index()
+top_o.columns = ["OriginPortCode", "count"]
+
+top_d = df_f["DestPortCode"].value_counts().head(15).reset_index()
+top_d.columns = ["DestPortCode", "count"]
+
+col1, col2 = st.columns(2)
+
+with col1:
+    fig_o = px.bar(
+        top_o,
+        x="count",
+        y="OriginPortCode",
+        orientation="h",
+        hover_data=["OriginPortCode", "count"]
+    )
+    fig_o.update_traces(
+        hovertemplate="<b>Origin:</b> %{y}<br><b>Movements:</b> %{x}<extra></extra>"
+    )
+    st.plotly_chart(apply_dark(fig_o), use_container_width=True)
+
+with col2:
+    fig_d = px.bar(
+        top_d,
+        x="count",
+        y="DestPortCode",
+        orientation="h",
+        hover_data=["DestPortCode", "count"]
+    )
+    fig_d.update_traces(
+        hovertemplate="<b>Destination:</b> %{y}<br><b>Movements:</b> %{x}<extra></extra>"
+    )
+    st.plotly_chart(apply_dark(fig_d), use_container_width=True)
+
+# ===============================
+# TRANSIT VS PORT CALL
 # ===============================
 st.subheader("Transit Hours vs Port Call Index")
 
-sc = df_f.dropna(subset=["transit_hours_final", "port_call_index"])
+sc = df_f.dropna(subset=["transit_hours", "port_call_index"])
 
 if not sc.empty:
 
     fig_sc = px.scatter(
         sc,
         x="port_call_index",
-        y="transit_hours_final",
+        y="transit_hours",
         color="OriginPortCode",
-        hover_data={
-            "OriginPortCode": True,
-            "DestPortCode": True,      # ✅ ADD THIS
-            "Vessel_Name": True,
-            "vessvoy": True,
-            "port_call_index": False,
-            "transit_hours_final": False
-        }
+        custom_data=["OriginPortCode", "DestPortCode", "Vessel_Name", "vessvoy"]
     )
 
     fig_sc.update_traces(
@@ -316,166 +270,49 @@ if not sc.empty:
         "<b>Destination:</b> %{customdata[1]}<br>" +
         "<b>Vessel:</b> %{customdata[2]}<br>" +
         "<b>Voyage:</b> %{customdata[3]}<br>" +
-        "<b>Transit Hours:</b> %{y}<br>" +
+        "<b>Transit Hours:</b> %{y:.1f}<br>" +
         "<b>Port Call Index:</b> %{x}<extra></extra>"
     )
 
     fig_sc.update_layout(
-        title="Transit Hours vs Port Call Sequence",
         xaxis_title="Port Call Index",
         yaxis_title="Transit Hours"
     )
 
-    fig_sc = apply_strict_dark_theme(fig_sc)
-
-    st.plotly_chart(fig_sc, use_container_width=True)
-
-else:
-    st.warning("No data available for scatter chart.")
-
-    # -------- Interpretation: Port Concentration --------
-with st.container():
-    total_rows = len(df_f)
-    top_origin_share = top_o["count"].iloc[0] / total_rows if not top_o.empty else 0
-    top_dest_share = top_d["count"].iloc[0] / total_rows if not top_d.empty else 0
-
-    if top_origin_share > 0.6 or top_dest_share > 0.6:
-        st.warning(
-            "⚠️ **High port concentration risk**. "
-            "A single port dominates movements, which increases operational dependency "
-            "and risk exposure to local disruptions."
-        )
-    elif top_origin_share > 0.35 or top_dest_share > 0.35:
-        st.info(
-            "ℹ️ **Moderate concentration detected**. "
-            "A few ports handle most of the traffic, "
-            "which is typical for hub-and-spoke shipping models."
-        )
-    else:
-        st.success(
-            "✅ **Well-distributed port network**. "
-            "Traffic is spread across multiple origins and destinations."
-        )
-
-
-# ===============================
-# SCATTER: TRANSIT VS PORT CALL
-# ===============================
-st.subheader("Transit Hours vs Port Call Index")
-
-sc = df_f.dropna(subset=["transit_hours_final", "port_call_index"])
-
-if not sc.empty:
-
-    fig_sc = px.scatter(
-        sc,
-        x="port_call_index",
-        y="transit_hours_final",
-        color="OriginPortCode"
-    )
-
-    fig_sc.update_layout(
-        title="Transit Hours vs Port Call Sequence",
-        xaxis_title="Port Call Index",
-        yaxis_title="Transit Hours"
-    )
-
-    fig_sc = apply_strict_dark_theme(fig_sc)
-
-    st.plotly_chart(fig_sc, use_container_width=True)
-
-else:
-    st.warning("No data available for scatter chart.")
-
-# -------- Interpretation: Transit vs Port Call Index --------
-with st.container():
-    corr = sc[["port_call_index", "transit_hours_final"]].corr().iloc[0, 1]
-    outlier_ratio = (sc["transit_hours_final"] >
-                     sc["transit_hours_final"].quantile(0.95)).mean()
-
-    if corr > 0.6:
-        st.warning(
-            "⚠️ **Cascading delay pattern detected**. "
-            "Transit time increases with later port calls, "
-            "suggesting delays accumulate along the voyage."
-        )
-    elif corr < -0.5:
-        st.info(
-            "ℹ️ **Improving transit efficiency**. "
-            "Later port calls tend to have shorter transit times, "
-            "possibly due to optimized routing."
-        )
-    elif outlier_ratio > 0.1:
-        st.warning(
-            "⚠️ **Significant outliers present**. "
-            "A notable portion of port calls experience unusually long transit times."
-        )
-    else:
-        st.success(
-            "✅ **Stable transit behavior**. "
-            "Transit durations remain consistent throughout the voyage sequence."
-        )
-
+    st.plotly_chart(apply_dark(fig_sc), use_container_width=True)
 
 # ===============================
 # GANTT TIMELINE
 # ===============================
-st.subheader("Voyage Timeline (Gantt)")
+st.subheader("Voyage Timeline")
 
 vv_list = sorted(df_f["vessvoy"].dropna().unique())
 
 if vv_list:
-
-    vv_select = st.multiselect(
-        "Select voyages (max 10)",
-        vv_list,
-        default=vv_list[:5]
-    )
-
-    gantt_df = df_f[df_f["vessvoy"].isin(vv_select)]
+    selected = st.multiselect("Select Voyages", vv_list, default=vv_list[:3])
+    gantt_df = df_f[df_f["vessvoy"].isin(selected)]
 
     if not gantt_df.empty:
-
         fig_g = px.timeline(
             gantt_df,
             x_start="final_depart",
             x_end="arrive_dt",
             y="vessvoy",
-            color="OriginPortCode"
+            color="OriginPortCode",
+            custom_data=["DestPortCode"]
         )
 
-        fig_g.update_layout(
-            title="Voyage Timeline",
-            xaxis_title="Time",
-            yaxis_title="Voyage"
+        fig_g.update_traces(
+            hovertemplate=
+            "<b>Voyage:</b> %{y}<br>" +
+            "<b>Origin:</b> %{marker.color}<br>" +
+            "<b>Destination:</b> %{customdata[0]}<br>" +
+            "<b>Start:</b> %{x}<extra></extra>"
         )
 
         fig_g.update_yaxes(autorange="reversed")
+        fig_g.update_layout(xaxis_title="Time", yaxis_title="Voyage")
 
-        fig_g = apply_strict_dark_theme(fig_g)
+        st.plotly_chart(apply_dark(fig_g), use_container_width=True)
 
-        st.plotly_chart(fig_g, use_container_width=True)
-
-    else:
-        st.warning("No timeline data available.")
-
-else:
-    st.warning("No voyage data found.")
-
-# ===============================
-# DATA PREVIEW
-# ===============================
-#st.subheader("Data Preview")
-#st.dataframe(df_f.head(200))
-
-# ===============================
-# DOWNLOAD
-# ===============================
-#st.download_button(
-   # "Download Filtered CSV",
-   # df_f.to_csv(index=False),
-   # file_name="shipping_schedule_filtered.csv",
-   # mime="text/csv"
-#)
-
-#st.success("Dashboard loaded successfully 🚢")
+st.success("Dashboard loaded successfully 🚢")
