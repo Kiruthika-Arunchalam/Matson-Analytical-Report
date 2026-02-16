@@ -87,142 +87,126 @@ df.columns = df.columns.str.strip()
 if df.empty:
     st.error("Data file is empty")
     st.stop()
+df["arrive_dt"] = pd.to_datetime(df["arrive_dt"], errors="coerce"
+import streamlit as st
+import pandas as pd
+import numpy as np
 
-# ===============================
-# DATE PARSING (SAFE)
-# ===============================
-df["arrive_dt"] = pd.to_datetime(df.get("arrive_dt"), errors="coerce")
+# =====================================
+# LOAD DATA
+# =====================================
+# (Assuming df already loaded above this)
 
-df["final_depart"] = pd.to_datetime(
-    df.get("final_imputed_depart_dt", df.get("depart_dt")),
-    errors="coerce"
+# Convert date column safely
+df["arrive_dt"] = pd.to_datetime(df["arrive_dt"], errors="coerce")
+
+# =====================================
+# CLEAN STRING COLUMNS FIRST
+# =====================================
+for col in ["Vessel_Name", "Voyage", "Bound", "OriginPortCode", "DestPortCode"]:
+    if col in df.columns:
+        df[col] = (
+            df[col]
+            .fillna("")
+            .astype(str)
+            .str.strip()
+        )
+
+# Remove accidental "nan" strings
+df.replace("nan", "", inplace=True)
+
+# =====================================
+# BUILD SAFE VESSEL-VOYAGE FIELD
+# =====================================
+df["vessvoy"] = np.where(
+    df["Voyage"] != "",
+    df["Vessel_Name"] + "*" + df["Voyage"] + "*" + df["Bound"],
+    df["Vessel_Name"] + "*NO_VOYAGE"
 )
 
-# ===============================
-# DERIVED FIELDS
-# ===============================
-df["vessvoy"] = (
-    df.get("Vessel_Name", "").astype(str) + "*" +
-    df.get("Voyage", "").astype(str) + "*" +
-    df.get("Bound", "").astype(str)
-)
-
-df = df.sort_values(["vessvoy", "final_depart"])
-df["port_call_index"] = df.groupby("vessvoy").cumcount() + 1
-
-df["transit_hours"] = (
-    df["arrive_dt"] - df["final_depart"]
-).dt.total_seconds() / 3600
-
-# ===============================
+# =====================================
 # SIDEBAR FILTERS
-# ===============================
+# =====================================
+
 st.sidebar.header("Filters")
 
-if df["arrive_dt"].notna().any():
-    date_range = st.sidebar.date_input(
-        "Arrival date range",
-        [
-            df["arrive_dt"].min().date(),
-            df["arrive_dt"].max().date()
-        ]
-    )
-else:
-    date_range = None
+# Date Range
+date_range = st.sidebar.date_input(
+    "Arrival date range",
+    [
+        df["arrive_dt"].min().date(),
+        df["arrive_dt"].max().date()
+    ]
+)
 
+# Vessel
 vessels = st.sidebar.multiselect(
     "Vessel",
-    sorted(df["Vessel_Name"].dropna().unique())
+    sorted(df["Vessel_Name"].unique())
 )
 
+# Voyage
 voyages = st.sidebar.multiselect(
     "Voyage",
-    sorted(df["vessvoy"].dropna().unique())
+    sorted(df["vessvoy"].unique())
 )
 
+# Origin
 origins = st.sidebar.multiselect(
-    "Origin Port",
-    sorted(df["OriginPortCode"].dropna().unique())
+    "Origin",
+    sorted(df["OriginPortCode"].unique())
 )
 
+# Destination
 dests = st.sidebar.multiselect(
-    "Destination Port",
-    sorted(df["DestPortCode"].dropna().unique())
+    "Destination",
+    sorted(df["DestPortCode"].unique())
 )
 
-# ===============================
+# =====================================
 # APPLY FILTERS
-# ===============================
-# ------------------------
-# Apply Filters (ROBUST VERSION)
-# ------------------------
-
+# =====================================
 df_f = df.copy()
 
-# --- Normalize datetime properly ---
-df_f['arrive_dt'] = pd.to_datetime(df_f['arrive_dt'], errors='coerce')
-
-# Remove timezone if exists
-if df_f['arrive_dt'].dt.tz is not None:
-    df_f['arrive_dt'] = df_f['arrive_dt'].dt.tz_localize(None)
-
-# --- Normalize string columns to avoid mismatch ---
-df_f['Vessel_Name'] = df_f['Vessel_Name'].astype(str).str.strip()
-df_f['OriginPortCode'] = df_f['OriginPortCode'].astype(str).str.strip()
-df_f['DestPortCode'] = df_f['DestPortCode'].astype(str).str.strip()
-
-# ------------------------
-# DATE FILTER (inclusive, safe)
-# ------------------------
+# Date Filter
 if date_range and len(date_range) == 2:
     start, end = date_range
+    df_f = df_f[
+        (df_f["arrive_dt"] >= pd.to_datetime(start)) &
+        (df_f["arrive_dt"] <= pd.to_datetime(end) + pd.Timedelta(days=1))
+    ]
 
-    if pd.notna(start):
-        start = pd.to_datetime(start)
-        df_f = df_f[df_f['arrive_dt'] >= start]
-
-    if pd.notna(end):
-        end = pd.to_datetime(end) + pd.Timedelta(days=1) - pd.Timedelta(seconds=1)
-        df_f = df_f[df_f['arrive_dt'] <= end]
-
-# ------------------------
-# VESSEL FILTER (case & space safe)
-# ------------------------
+# Vessel Filter
 if vessels:
-    vessels_clean = [v.strip() for v in vessels]
-    df_f = df_f[df_f['Vessel_Name'].isin(vessels_clean)]
+    df_f = df_f[df_f["Vessel_Name"].isin(vessels)]
 
-# ------------------------
-# ORIGIN FILTER
-# ------------------------
+# Voyage Filter
+if voyages:
+    df_f = df_f[df_f["vessvoy"].isin(voyages)]
+
+# Origin Filter
 if origins:
-    origins_clean = [o.strip() for o in origins]
-    df_f = df_f[df_f['OriginPortCode'].isin(origins_clean)]
+    df_f = df_f[df_f["OriginPortCode"].isin(origins)]
 
-# ------------------------
-# DESTINATION FILTER
-# ------------------------
+# Destination Filter
 if dests:
-    dests_clean = [d.strip() for d in dests]
-    df_f = df_f[df_f['DestPortCode'].isin(dests_clean)]
+    df_f = df_f[df_f["DestPortCode"].isin(dests)]
 
-# Reset index after filtering
-df_f = df_f.reset_index(drop=True)
-
-# ===============================
-# TITLE
-# ===============================
-st.title("Matson Schedule Data Analysis Report")
-st.header("Overview")
-
-# ===============================
+# =====================================
 # KPIs
-# ===============================
-c1, c2, c3, c4 = st.columns(4)
+# =====================================
+k1, k2, k3 = st.columns(3)
 
-c1.metric("Rows", len(df_f))
-c2.metric("Voyages", df_f["vessvoy"].nunique())
-c3.metric("Vessels", df_f["Vessel_Name"].nunique())
+k1.metric("Rows Count", f"{len(df_f):,}")
+k2.metric("Unique Vessels", df_f["Vessel_Name"].nunique())
+k3.metric("Unique Voyages", df_f["vessvoy"].nunique())
+
+# =====================================
+# OPTIONAL DEBUG SECTION (REMOVE LATER)
+# =====================================
+# st.write("Filtered Data Preview")
+# st.dataframe(df_f.head())
+
 
 avg_transit = df_f["transit_hours"].mean()
 c4.metric("Avg Transit (hrs)", f"{avg_transit:.1f}" if not np.isnan(avg_transit) else "N/A")
