@@ -188,23 +188,23 @@ if date_range and len(date_range) == 2:
 # ------------------------
 # VESSEL FILTER (case & space safe)
 # ------------------------
-if vessel_filter:
-    vessel_filter_clean = [v.strip() for v in vessel_filter]
-    df_f = df_f[df_f['Vessel_Name'].isin(vessel_filter_clean)]
+if vessels:
+    vessels_clean = [v.strip() for v in vessels]
+    df_f = df_f[df_f['Vessel_Name'].isin(vessels_clean)]
 
 # ------------------------
 # ORIGIN FILTER
 # ------------------------
-if origin_filter:
-    origin_filter_clean = [o.strip() for o in origin_filter]
-    df_f = df_f[df_f['OriginPortCode'].isin(origin_filter_clean)]
+if origins:
+    origins_clean = [o.strip() for o in origins]
+    df_f = df_f[df_f['OriginPortCode'].isin(origins_clean)]
 
 # ------------------------
 # DESTINATION FILTER
 # ------------------------
-if dest_filter:
-    dest_filter_clean = [d.strip() for d in dest_filter]
-    df_f = df_f[df_f['DestPortCode'].isin(dest_filter_clean)]
+if dests:
+    dests_clean = [d.strip() for d in dests]
+    df_f = df_f[df_f['DestPortCode'].isin(dests_clean)]
 
 # Reset index after filtering
 df_f = df_f.reset_index(drop=True)
