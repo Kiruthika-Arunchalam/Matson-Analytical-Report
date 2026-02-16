@@ -153,25 +153,61 @@ dests = st.sidebar.multiselect(
 # ===============================
 # APPLY FILTERS
 # ===============================
+# ------------------------
+# Apply Filters (ROBUST VERSION)
+# ------------------------
+
 df_f = df.copy()
 
-if date_range:
-    df_f = df_f[
-        (df_f["arrive_dt"] >= pd.to_datetime(date_range[0])) &
-        (df_f["arrive_dt"] <= pd.to_datetime(date_range[1]) + pd.Timedelta(days=1))
-    ]
+# --- Normalize datetime properly ---
+df_f['arrive_dt'] = pd.to_datetime(df_f['arrive_dt'], errors='coerce')
 
-if vessels:
-    df_f = df_f[df_f["Vessel_Name"].isin(vessels)]
+# Remove timezone if exists
+if df_f['arrive_dt'].dt.tz is not None:
+    df_f['arrive_dt'] = df_f['arrive_dt'].dt.tz_localize(None)
 
-if voyages:
-    df_f = df_f[df_f["vessvoy"].isin(voyages)]
+# --- Normalize string columns to avoid mismatch ---
+df_f['Vessel_Name'] = df_f['Vessel_Name'].astype(str).str.strip()
+df_f['OriginPortCode'] = df_f['OriginPortCode'].astype(str).str.strip()
+df_f['DestPortCode'] = df_f['DestPortCode'].astype(str).str.strip()
 
-if origins:
-    df_f = df_f[df_f["OriginPortCode"].isin(origins)]
+# ------------------------
+# DATE FILTER (inclusive, safe)
+# ------------------------
+if date_range and len(date_range) == 2:
+    start, end = date_range
 
-if dests:
-    df_f = df_f[df_f["DestPortCode"].isin(dests)]
+    if pd.notna(start):
+        start = pd.to_datetime(start)
+        df_f = df_f[df_f['arrive_dt'] >= start]
+
+    if pd.notna(end):
+        end = pd.to_datetime(end) + pd.Timedelta(days=1) - pd.Timedelta(seconds=1)
+        df_f = df_f[df_f['arrive_dt'] <= end]
+
+# ------------------------
+# VESSEL FILTER (case & space safe)
+# ------------------------
+if vessel_filter:
+    vessel_filter_clean = [v.strip() for v in vessel_filter]
+    df_f = df_f[df_f['Vessel_Name'].isin(vessel_filter_clean)]
+
+# ------------------------
+# ORIGIN FILTER
+# ------------------------
+if origin_filter:
+    origin_filter_clean = [o.strip() for o in origin_filter]
+    df_f = df_f[df_f['OriginPortCode'].isin(origin_filter_clean)]
+
+# ------------------------
+# DESTINATION FILTER
+# ------------------------
+if dest_filter:
+    dest_filter_clean = [d.strip() for d in dest_filter]
+    df_f = df_f[df_f['DestPortCode'].isin(dest_filter_clean)]
+
+# Reset index after filtering
+df_f = df_f.reset_index(drop=True)
 
 # ===============================
 # TITLE
