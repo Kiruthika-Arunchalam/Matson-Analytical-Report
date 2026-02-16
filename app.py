@@ -158,19 +158,33 @@ st.subheader("Departure Count by Date")
 
 if "final_depart" in df_f.columns:
 
-    dep = (
-        df_f["final_depart"]
-        .dropna()
-        .dt.date
-        .value_counts()
-        .sort_index()
-        .reset_index()
-    )
+    dep_source = df_f["final_depart"].dropna()
 
-    if not dep.empty:
+    if not dep_source.empty:
+
+        dep = (
+            dep_source
+            .dt.date
+            .value_counts()
+            .sort_index()
+            .reset_index()
+        )
+
         dep.columns = ["date", "count"]
-        fig = px.line(dep, x="date", y="count", markers=True)
-        st.plotly_chart(fig, use_container_width=True)
+
+        fig_dep = px.line(dep, x="date", y="count", markers=True)
+        fig_dep.update_layout(
+            xaxis_title="Date",
+            yaxis_title="Departure Count"
+        )
+
+        st.plotly_chart(apply_dark(fig_dep), use_container_width=True)
+
+    else:
+        st.info("No departure data available for selected filters.")
+
+else:
+    st.warning("Column 'final_depart' not found in dataset.")
 
 # ===============================
 # TOP PORTS
@@ -192,29 +206,47 @@ if "destportcode" in df_f.columns:
 # ===============================
 # SCATTER
 # ===============================
+st.subheader("Transit Hours vs Port Call Index")
+
 if {"transit_hours", "port_call_index"}.issubset(df_f.columns):
 
     sc = df_f.dropna(subset=["transit_hours", "port_call_index"])
 
     if not sc.empty:
+
         fig_sc = px.scatter(
             sc,
             x="port_call_index",
             y="transit_hours",
             color="originportcode"
         )
-        st.plotly_chart(fig_sc, use_container_width=True)
+
+        fig_sc.update_layout(
+            xaxis_title="Port Call Index",
+            yaxis_title="Transit Hours"
+        )
+
+        st.plotly_chart(apply_dark(fig_sc), use_container_width=True)
+
+    else:
+        st.info("No transit data available for selected filters.")
+
+else:
+    st.warning("Transit fields missing in dataset.")
 
 # ===============================
 # GANTT
 # ===============================
 st.subheader("Voyage Timeline (Gantt)")
 
-if {"final_depart", "arrive_dt"}.issubset(df_f.columns):
+required_cols = {"vessvoy", "final_depart", "arrive_dt", "originportcode"}
 
-    vv_list = sorted(df_f["vessvoy"].unique())
+if required_cols.issubset(df_f.columns):
+
+    vv_list = sorted(df_f["vessvoy"].dropna().unique())
 
     if vv_list:
+
         vv_select = st.multiselect(
             "Select voyages (max 10)",
             vv_list,
@@ -223,9 +255,10 @@ if {"final_depart", "arrive_dt"}.issubset(df_f.columns):
 
         gantt_df = df_f[
             df_f["vessvoy"].isin(vv_select)
-        ]
+        ].dropna(subset=["final_depart", "arrive_dt"])
 
         if not gantt_df.empty:
+
             fig_g = px.timeline(
                 gantt_df,
                 x_start="final_depart",
@@ -233,5 +266,15 @@ if {"final_depart", "arrive_dt"}.issubset(df_f.columns):
                 y="vessvoy",
                 color="originportcode"
             )
+
             fig_g.update_yaxes(autorange="reversed")
-            st.plotly_chart(fig_g, use_container_width=True)
+            st.plotly_chart(apply_dark(fig_g), use_container_width=True)
+
+        else:
+            st.info("No voyage timeline data available.")
+
+    else:
+        st.info("No voyages found after filtering.")
+
+else:
+    st.warning("Required columns missing for Gantt chart.")
