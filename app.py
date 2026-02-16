@@ -88,6 +88,8 @@ if df.empty:
     st.error("Data file is empty")
     st.stop()
 
+# Clean column names globally
+df.columns = df.columns.str.strip().str.lower()
 
 # =====================================
 # LOAD DATA
