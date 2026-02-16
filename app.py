@@ -189,24 +189,22 @@ if origins:
 if dests:
     df_f = df_f[df_f["DestPortCode"].isin(dests)]
 
-# =====================================
-# KPIs
-# =====================================
-k1, k2, k3 = st.columns(3)
+# Calculate Avg Transit safely
+if "Transit_Hours" in df_f.columns and not df_f.empty:
+    avg_transit = df_f["Transit_Hours"].mean()
+else:
+    avg_transit = np.nan
 
-k1.metric("Rows Count", f"{len(df_f):,}")
-k2.metric("Unique Vessels", df_f["Vessel_Name"].nunique())
-k3.metric("Unique Voyages", df_f["vessvoy"].nunique())
+# Create 4 KPI columns
+c1, c2, c3, c4 = st.columns(4)
 
-# =====================================
-# OPTIONAL DEBUG SECTION (REMOVE LATER)
-# =====================================
-# st.write("Filtered Data Preview")
-# st.dataframe(df_f.head())
-
-
-avg_transit = df_f["transit_hours"].mean()
-c4.metric("Avg Transit (hrs)", f"{avg_transit:.1f}" if not np.isnan(avg_transit) else "N/A")
+c1.metric("Rows Count", f"{len(df_f):,}")
+c2.metric("Unique Vessels", df_f["Vessel_Name"].nunique())
+c3.metric("Unique Voyages", df_f["vessvoy"].nunique())
+c4.metric(
+    "Avg Transit (hrs)",
+    f"{avg_transit:.1f}" if not np.isnan(avg_transit) else "N/A"
+)
 
 # ===============================
 # DEPARTURE DISTRIBUTION
