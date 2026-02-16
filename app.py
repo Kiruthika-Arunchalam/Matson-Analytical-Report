@@ -87,10 +87,7 @@ df.columns = df.columns.str.strip()
 if df.empty:
     st.error("Data file is empty")
     st.stop()
-df["arrive_dt"] = pd.to_datetime(df["arrive_dt"], errors="coerce"
-import streamlit as st
-import pandas as pd
-import numpy as np
+
 
 # =====================================
 # LOAD DATA
