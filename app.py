@@ -5,6 +5,14 @@ import numpy as np
 import plotly.express as px
 import os
 
+def apply_dark(fig):
+    fig.update_layout(
+        template="plotly_dark",
+        paper_bgcolor="#0E1117",
+        plot_bgcolor="#0E1117"
+    )
+    return fig
+
 # ===============================
 # PAGE CONFIG
 # ===============================
@@ -97,13 +105,19 @@ else:
 # ===============================
 st.sidebar.header("Filters")
 
+# Safe arrival date range setup
+if "arrive_dt" in df.columns and df["arrive_dt"].notna().any():
+    min_date = df["arrive_dt"].dropna().min().date()
+    max_date = df["arrive_dt"].dropna().max().date()
+else:
+    min_date = pd.Timestamp.today().date()
+    max_date = pd.Timestamp.today().date()
+
 date_range = st.sidebar.date_input(
     "Arrival date range",
-    [
-        df["arrive_dt"].min().date(),
-        df["arrive_dt"].max().date()
-    ]
+    [min_date, max_date]
 )
+
 
 vessels = st.sidebar.multiselect(
     "Vessel",
@@ -199,7 +213,8 @@ if "final_depart" in df_f.columns:
             yaxis_title="Departure Count"
         )
 
-        st.plotly_chart(apply_dark(fig_dep), use_container_width=True)
+       st.plotly_chart(fig_dep, use_container_width=True)
+
 
     else:
         st.info("No departure data available for selected filters.")
@@ -255,6 +270,8 @@ if {"transit_hours", "port_call_index"}.issubset(df_f.columns):
 
 else:
     st.warning("Transit fields missing in dataset.")
+
+st.write("Gantt rows:", len(gantt_df))
 
 # ===============================
 # GANTT
