@@ -208,12 +208,13 @@ if "final_depart" in df_f.columns:
         dep.columns = ["date", "count"]
 
         fig_dep = px.line(dep, x="date", y="count", markers=True)
+
         fig_dep.update_layout(
             xaxis_title="Date",
             yaxis_title="Departure Count"
         )
 
-       st.plotly_chart(fig_dep, use_container_width=True)
+        st.plotly_chart(fig_dep, use_container_width=True)
 
 
     else:
@@ -271,7 +272,7 @@ if {"transit_hours", "port_call_index"}.issubset(df_f.columns):
 else:
     st.warning("Transit fields missing in dataset.")
 
-st.write("Gantt rows:", len(gantt_df))
+
 
 # ===============================
 # GANTT
@@ -283,6 +284,7 @@ required_cols = {"vessvoy", "final_depart", "arrive_dt", "originportcode"}
 if required_cols.issubset(df_f.columns):
 
     gantt_df = df_f.dropna(subset=["final_depart", "arrive_dt"])
+    st.write("Gantt rows:", len(gantt_df))
 
     if not gantt_df.empty:
 
