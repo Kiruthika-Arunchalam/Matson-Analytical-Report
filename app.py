@@ -564,88 +564,111 @@ else:
 
 # 9) Scatter: transit vs port_call_index
 st.subheader("Transit Hours vs Port Call Index (scatter)")
-if df_f['transit_hours_final'].notna().any() and df_f['port_call_index'].notna().any():
-    sc = df_f[df_f['transit_hours_final'].notna() & df_f['port_call_index'].notna()]
-    fig_sc = px.scatter(sc, x='port_call_index', y='transit_hours_final', color='route', hover_data=['vessvoy','OriginPortCode','DestPortCode'], title='Transit Hours vs Port Call Index')
-    fig_sc.update_layout(template='plotly_dark')
-    st.plotly_chart(fig_sc, use_container_width=True)
-else:
-    st.info("Not enough data for scatter chart.")
-    # ---- Insight: Transit vs Port Call Index ----
-with st.container():
-    # compute correlation safely
-    corr = sc[['port_call_index','transit_hours_final']].corr().iloc[0,1]
 
-    outlier_threshold = sc['transit_hours_final'].quantile(0.95)
-    outlier_ratio = (sc['transit_hours_final'] > outlier_threshold).mean()
+sc = df_f[
+    df_f["transit_hours_final"].notna() &
+    df_f["port_call_index"].notna()
+].copy()
+
+if not sc.empty:
+
+    fig_sc = px.scatter(
+        sc,
+        x="port_call_index",
+        y="transit_hours_final",
+        color="route",
+        hover_data=["vessvoy", "OriginPortCode", "DestPortCode"],
+        title="Transit Hours vs Port Call Index"
+    )
+
+    fig_sc = apply_strict_dark_theme(fig_sc)
+    st.plotly_chart(fig_sc, use_container_width=True)
+
+    # ---- SAFE INTERPRETATION ----
+    corr = sc[["port_call_index", "transit_hours_final"]].corr().iloc[0, 1]
+    outlier_threshold = sc["transit_hours_final"].quantile(0.95)
+    outlier_ratio = (sc["transit_hours_final"] > outlier_threshold).mean()
 
     if corr > 0.6:
-        st.warning(
-            "⚠️ **Delay accumulation detected**: "
-            "Transit times tend to increase as voyages progress, "
-            "indicating possible cascading delays across port calls."
-        )
+        st.warning("⚠️ Transit delays accumulate across port calls.")
     elif corr < -0.6:
-        st.info(
-            "ℹ️ **Decreasing transit pattern**: "
-            "Later port calls show reduced transit times, "
-            "possibly due to route optimization or shorter legs."
-        )
+        st.info("ℹ️ Transit improves across later port calls.")
     elif outlier_ratio > 0.1:
-        st.warning(
-            "⚠️ **High number of outliers detected**: "
-            "Several port calls have unusually high transit times."
-        )
+        st.warning("⚠️ High number of abnormal transit times detected.")
     else:
-        st.success(
-            "✅ **Stable transit behavior**: "
-            "Transit times remain consistent across port call sequence."
-        )
+        st.success("✅ Transit behavior is stable.")
 
+else:
+    st.info("Not enough valid transit data to render scatter chart.")
 
 # 10) Gantt-like timeline for selected voyages
 st.subheader("Voyage Timeline (Gantt)")
-vv_options = sorted(df_f['vessvoy'].dropna().unique().tolist())[:200]
-sel_vv = st.multiselect("Select voyages to show (max 10)", options=vv_options, default=vv_options[:5])
-if sel_vv:
-    gantt_df = df_f[df_f['vessvoy'].isin(sel_vv) & df_f['arrive_dt'].notna() & df_f['final_depart'].notna()]
-    if not gantt_df.empty:
-        gantt_df = gantt_df.sort_values(['vessvoy','final_depart'])
-        fig_g = px.timeline(gantt_df, x_start='final_depart', x_end='arrive_dt', y='vessvoy', color='route', hover_data=['OriginPortCode','DestPortCode'])
-        fig_g.update_layout(template='plotly_dark')
-        fig_g.update_yaxes(autorange='reversed')
-        st.plotly_chart(fig_g, use_container_width=True)
+
+vv_options = sorted(df_f["vessvoy"].dropna().unique())[:200]
+
+if vv_options:
+
+    sel_vv = st.multiselect(
+        "Select voyages to show (max 10)",
+        options=vv_options,
+        default=vv_options[:5]
+    )
+
+    if sel_vv:
+
+        gantt_df = df_f[
+            df_f["vessvoy"].isin(sel_vv) &
+            df_f["arrive_dt"].notna() &
+            df_f["final_depart"].notna()
+        ].copy()
+
+        if not gantt_df.empty:
+
+            gantt_df = gantt_df.sort_values(["vessvoy", "final_depart"])
+
+            fig_g = px.timeline(
+                gantt_df,
+                x_start="final_depart",
+                x_end="arrive_dt",
+                y="vessvoy",
+                color="route",
+                hover_data=["OriginPortCode", "DestPortCode"]
+            )
+
+            fig_g.update_yaxes(autorange="reversed")
+            fig_g = apply_strict_dark_theme(fig_g)
+
+            st.plotly_chart(fig_g, use_container_width=True)
+
+            # ---- SAFE INTERPRETATION ----
+            durations = (
+                gantt_df["arrive_dt"] - gantt_df["final_depart"]
+            ).dt.total_seconds() / 3600.0
+
+            long_ratio = (durations > durations.quantile(0.95)).mean()
+
+            overlaps = 0
+            for vv, g in gantt_df.groupby("vessvoy"):
+                g = g.sort_values("final_depart")
+                overlaps += (
+                    g["final_depart"].shift(-1) < g["arrive_dt"]
+                ).sum()
+
+            if overlaps > 0:
+                st.warning(f"⚠️ {overlaps} overlapping sailing windows detected.")
+            elif long_ratio > 0.15:
+                st.warning("⚠️ Some voyages have unusually long durations.")
+            else:
+                st.success("✅ Voyage scheduling appears consistent.")
+
+        else:
+            st.info("No valid depart/arrival pairs for selected voyages.")
+
     else:
-        st.info("No complete depart/arrive pairs for selected voyages.")
+        st.info("Select voyages to render timeline.")
+
 else:
-    st.info("Select voyages to view timeline.")
-    # ---- Insight: Voyage Timeline (Gantt) ----
-with st.container():
-    durations = (gantt_df['arrive_dt'] - gantt_df['final_depart']).dt.total_seconds() / 3600.0
-    long_ratio = (durations > durations.quantile(0.95)).mean()
-
-    # check overlaps within same vessvoy
-    overlaps = 0
-    for vv, g in gantt_df.groupby('vessvoy'):
-        g = g.sort_values('final_depart')
-        overlaps += (g['final_depart'].shift(-1) < g['arrive_dt']).sum()
-
-    if overlaps > 0:
-        st.warning(
-            f"⚠️ **Schedule overlap detected**: "
-            f"{overlaps} overlapping sailing windows found within selected voyages."
-        )
-    elif long_ratio > 0.15:
-        st.warning(
-            "⚠️ **Unusually long voyages detected**: "
-            "Some voyages have significantly longer sailing durations than typical."
-        )
-    else:
-        st.success(
-            "✅ **Voyage schedules appear consistent**: "
-            "No major overlaps or unrealistic durations detected."
-        )
-
+    st.info("No voyages available.")
 
 # 11) Data preview + download
 #st.subheader("Data preview (first 200 rows)")
